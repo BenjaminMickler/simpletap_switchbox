@@ -39,6 +39,7 @@ import math
 UART_SERVICE_UUID = "fb1e4001-54ae-4a28-9f74-dfccb248601d"
 UART_RX_CHAR_UUID = "fb1e4002-54ae-4a28-9f74-dfccb248601d"
 UART_TX_CHAR_UUID = "fb1e4003-54ae-4a28-9f74-dfccb248601d"
+CFG_CHAR_UUID = "881f328a-9254-468f-ae0a-075cfc54e137"
 PART = 16000
 MTU = 500
 
@@ -49,7 +50,17 @@ total = 0
 def get_bytes_from_file(filename):
     print("Reading from:", filename)
     return open(filename, "rb").read()
-
+async def set_name(address, name, ci, config):
+    try:
+        async with BleakClient(address) as client:
+            await client.write_gatt_char(CFG_CHAR_UUID, name.encode())
+        os.remove("name")
+        config["switchboxes"][ci] = name
+        with open("config.txt", "w") as f:
+            json.dump(config, f)
+        return "Success"
+    except Exception as e:
+        return e
 async def start_ota(ble_address: str, file_name: str):
     device = await BleakScanner.find_device_by_address(ble_address, timeout=20.0)
     disconnected_event = asyncio.Event()
@@ -214,8 +225,10 @@ if __name__ == "__main__":
         for i in config["switchboxes"]:
             it += 1
             print(str(it)+" "+i)
-        chosen_box = config["switchboxes"][int(input("> "))]
+        ci = int(input("> "))
+        chosen_switchbox = config["switchboxes"][ci]
     else:
+        ci = 0
         chosen_switchbox = config["switchboxes"][0]
     mac_addr = asyncio.run(get_mac(chosen_switchbox))
     ADDRESS = (
@@ -227,6 +240,11 @@ if __name__ == "__main__":
     if len(binaries) > 0:
         print("Firmware file found, updating switchbox.")
         asyncio.run(start_ota(ADDRESS, binaries[0]))
+    if os.path.isfile("name"):
+        with open("name") as f:
+            name = f.read().replace('\n','')
+        print(f'"name" file found, updating switchbox name to "{name}"')
+        print("Result:", asyncio.run(set_name(ADDRESS, name, ci, config)))
     print("Select a profile: ")
     for i in config["profiles"]:
         print(i)

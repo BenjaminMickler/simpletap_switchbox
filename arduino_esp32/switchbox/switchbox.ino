@@ -34,6 +34,7 @@ The SimpleTap Project. If not, see <https://www.gnu.org/licenses/>.
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+using namespace std;
 #define BUILTINLED 2
 #define FORMAT_SPIFFS_IF_FAILED true
 #define FORMAT_FFAT_IF_FAILED true
@@ -54,9 +55,11 @@ uint8_t updater2[16384];
 #define CHARACTERISTIC_UUID_RX    "fb1e4002-54ae-4a28-9f74-dfccb248601d"
 #define CHARACTERISTIC_UUID_TX    "fb1e4003-54ae-4a28-9f74-dfccb248601d"
 #define sCHARACTERISTIC_UUID_TX   "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define cfgCHARACTERISTIC_UUID    "881f328a-9254-468f-ae0a-075cfc54e137"
 static BLECharacteristic* pCharacteristicTX;
 static BLECharacteristic* spCharacteristicTX;
 static BLECharacteristic* pCharacteristicRX;
+static BLECharacteristic *cfgpCharacteristic;
 static bool deviceConnected = false, sendMode = false;
 bool oldDeviceConnected = false;
 static bool writeFile = false, request = false;
@@ -67,6 +70,7 @@ static int MODE = NORMAL_MODE;
 uint8_t txValue0 = 0;
 uint8_t txValue1 = 1;
 uint8_t txValue2 = 2;
+
 static void rebootEspWithReason(String reason) {
     Serial.println(reason);
     delay(1000);
@@ -78,6 +82,38 @@ class bservercallbacks: public BLEServerCallbacks {
     }
     void onDisconnect(BLEServer* pServer) {
         deviceConnected = false;
+    }
+};
+vector<String> readFile(fs::FS &fs, const char * path){
+   File file = fs.open(path);
+   if(!file || file.isDirectory()){
+    SPIFFS.remove(path);
+    writeFileFunc(SPIFFS, path, "");
+   }
+   vector<String> v;
+   while (file.available()) {
+     v.push_back(file.readStringUntil('\n'));
+   }
+   file.close();
+   return v;
+}
+
+bool writeFileFunc(fs::FS &fs, const char * path, const char * message){
+   File file = fs.open(path, FILE_WRITE);
+   if(!file){
+      return false;
+   }
+   if(file.print(message)){
+      return true;
+   }else {
+      return false;
+   }
+}
+class cfgcallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *cfgpCharacteristic) {
+      string value = cfgpCharacteristic->getValue();
+      writeFileFunc(SPIFFS, "/config.txt", value.c_str());
+      ESP.restart();
     }
 };
 class bcallbacks: public BLECharacteristicCallbacks {
@@ -147,12 +183,12 @@ void performUpdate(Stream &updateSource, size_t updateSize) {
     if (Update.begin(updateSize)) {
         size_t written = Update.writeStream(updateSource);
         if (written == updateSize) {
-            Serial.println("Written : " + String(written) + " successfully");
+            Serial.println("Written: " + String(written) + " successfully");
         }
         else {
-            Serial.println("Written only : " + String(written) + "/" + String(updateSize) + ". Retry?");
+            Serial.println("Written only: " + String(written) + "/" + String(updateSize) + ". Retry?");
         }
-        result += "Written : " + String(written) + "/" + String(updateSize) + " [" + String((written / updateSize) * 100) + "%] \n";
+        result += "Written: " + String(written) + "/" + String(updateSize) + " [" + String((written / updateSize) * 100) + "%] \n";
         if (Update.end()) {
             Serial.println("OTA done!");
             result += "OTA Done: ";
@@ -225,7 +261,14 @@ void setup() {
         return;
     }
 #endif
-    BLEDevice::init("SimpleTap SwitchBox");
+    if (SPIFFS.exists("/config.txt") == 0) {
+      writeFileFunc(SPIFFS, "/config.txt", "SimpleTap SwitchBox\n500");
+     // while (w != true) {
+      //  w = writeFileFunc(SPIFFS, "/config.txt", "SimpleTap SwitchBox\n500");
+      //}
+    }
+    vector<String> cfg = readFile(SPIFFS, "/config.txt");
+    BLEDevice::init(cfg[0].c_str());
     BLEServer *pServer = BLEDevice::createServer();
     pServer->setCallbacks(new bservercallbacks());
     BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -239,6 +282,9 @@ void setup() {
     pCharacteristicTX->setNotifyProperty(true);
     spCharacteristicTX->addDescriptor(new BLE2902());
     spCharacteristicTX->setNotifyProperty(true);
+    cfgpCharacteristic = pService->createCharacteristic(cfgCHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    cfgpCharacteristic->setCallbacks(new cfgcallbacks());
+    cfgpCharacteristic->setValue(cfg[0].c_str());
     pService->start();
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
@@ -277,11 +323,12 @@ void loop() {
                     sendMode = false;
                 }
                 delay(10);
+            } else {
+
             }
             if (!deviceConnected && oldDeviceConnected) {
                 delay(500);
                 pServer->startAdvertising();
-                Serial.println("start advertising");
                 oldDeviceConnected = deviceConnected;
             }
             if (deviceConnected && !oldDeviceConnected) {

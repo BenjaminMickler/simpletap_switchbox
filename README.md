@@ -1,4 +1,5 @@
 # SimpleTap SwitchBox
+The SimpleTap SwitchBox is part of The SimpleTap Project.
 A switchbox designed for the SimpleTap (but works with other devices too).
 
 ## BLE OTA

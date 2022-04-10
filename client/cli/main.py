@@ -7,7 +7,7 @@ from pynput.keyboard import Key, Controller
 with open("config.txt") as f:
     config = json.load(f)
 keyboard = Controller()
-special_keys = {"F1": Key.f1, "F2": Key.f2, "F3": Key.f3, "F4": Key.f4, "F5": Key.f5}
+special_keys = {"enter": Key.enter, "space": Key.space, "F1": Key.f1, "F2": Key.f2, "F3": Key.f3, "F4": Key.f4, "F5": Key.f5}
 async def get_mac(wanted_name):
     print("Searching for \""+wanted_name+"\"")
     device = await BleakScanner.find_device_by_filter(

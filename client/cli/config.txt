@@ -1,0 +1,1 @@
+{"default_profile": "Sarepta", "CHARACTERISTIC_UUID": "6E400003-B5A3-F393-E0A9-E50E24DCCA9E", "switchboxes": ["SimpleTap SwitchBox"], "profiles": {"Sarepta": {"0": "KEYBOARD_PRESS-F3", "1": "KEYBOARD_PRESS-F4", "2": "KEYBOARD_PRESS-F5", "3": "KEYBOARD_PRESS-F4"}}}

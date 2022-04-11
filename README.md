@@ -1,8 +1,10 @@
 # SimpleTap SwitchBox
 The SimpleTap SwitchBox is part of The SimpleTap Project.
-A switchbox designed for the SimpleTap (but works with other devices too).
 
-## BLE OTA
+It is switchbox designed for the SimpleTap (but works with other devices too).
+
+## CLI client
+### BLE OTA
 The SimpleTap SwitchBox supports firmware updates over Bluetooth Low Energy.
 
 The client's BLE OTA functionality is built on the BLE_OTA_Python project by Felix Biego.

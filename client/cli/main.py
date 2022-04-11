@@ -35,21 +35,7 @@ import os
 import math
 import importlib
 extensions = {}
-# Felix Biego's BLE_OTA_Python | Copyright (c) 2021 Felix Biego (MIT license)
-UART_SERVICE_UUID = "fb1e4001-54ae-4a28-9f74-dfccb248601d"
-UART_RX_CHAR_UUID = "fb1e4002-54ae-4a28-9f74-dfccb248601d"
-UART_TX_CHAR_UUID = "fb1e4003-54ae-4a28-9f74-dfccb248601d"
 CFG_CHAR_UUID = "881f328a-9254-468f-ae0a-075cfc54e137"
-PART = 16000
-MTU = 500
-
-end = True
-clt = None
-fileBytes = None
-total = 0
-def get_bytes_from_file(filename):
-    print("Reading from:", filename)
-    return open(filename, "rb").read()
 async def set_name(address, name, ci, config):
     try:
         async with BleakClient(address) as client:
@@ -61,6 +47,20 @@ async def set_name(address, name, ci, config):
         return "Success"
     except Exception as e:
         return e
+# Felix Biego's BLE_OTA_Python | Copyright (c) 2021 Felix Biego (MIT license)
+UART_SERVICE_UUID = "fb1e4001-54ae-4a28-9f74-dfccb248601d"
+UART_RX_CHAR_UUID = "fb1e4002-54ae-4a28-9f74-dfccb248601d"
+UART_TX_CHAR_UUID = "fb1e4003-54ae-4a28-9f74-dfccb248601d"
+PART = 16000
+MTU = 500
+
+end = True
+clt = None
+fileBytes = None
+total = 0
+def get_bytes_from_file(filename):
+    print("Reading from:", filename)
+    return open(filename, "rb").read()
 async def start_ota(ble_address: str, file_name: str):
     device = await BleakScanner.find_device_by_address(ble_address, timeout=20.0)
     disconnected_event = asyncio.Event()

@@ -30,11 +30,11 @@ import platform
 from bleak import BleakClient, BleakScanner
 from bleak.exc import BleakError
 import json
-import shlex
-import subprocess
 import glob
 import os
 import math
+import importlib
+extensions = {}
 # Felix Biego's BLE_OTA_Python | Copyright (c) 2021 Felix Biego (MIT license)
 UART_SERVICE_UUID = "fb1e4001-54ae-4a28-9f74-dfccb248601d"
 UART_RX_CHAR_UUID = "fb1e4002-54ae-4a28-9f74-dfccb248601d"
@@ -176,32 +176,35 @@ async def start_ota(ble_address: str, file_name: str):
         print("-----------Complete--------------")
 # End BLE_OTA_Python
 with open("config.txt") as f:
-    config = json.load(f)
-if config["wayland/node"] != True:
-    from pynput.keyboard import Key, Controller
-    keyboard = Controller()
-    special_keys = {"enter": Key.enter, "space": Key.space, "F1": Key.f1, "F2": Key.f2, "F3": Key.f3, "F4": Key.f4, "F5": Key.f5}
+    try:
+        config = json.load(f)
+    except Exception as e:
+        print("Failed to load the config file, is it formatted correctly?\nError message:", e)
+        raise SystemExit
+if not os.path.isdir("extensions"):
+    os.mkdir("extensions")
+for i in config["extensions"]:
+    try:
+        extensions[i] = importlib.import_module(f"extensions.{i}.main")
+    except Exception as e:
+        print("Failed to load extension '"+i+"'. Is it installed?\nError message:", e)
 async def get_mac(wanted_name):
-    print("Searching for \""+wanted_name+"\"")
-    device = await BleakScanner.find_device_by_filter(
-        lambda d, ad: d.name and d.name.lower() == wanted_name.lower()
-    )
-    return device.address
+    while True:
+        print("Searching for \""+wanted_name+"\"")
+        device = await BleakScanner.find_device_by_filter(
+            lambda d, ad: d.name and d.name.lower() == wanted_name.lower()
+        )
+        if device != None:
+            return device.address
+        print("Not found")
 
 def notification_handler(sender, data):
     data = data.decode()
     print("Switch "+data+" pressed")
-    pd = profile[data].split("|")
-    if pd[0] == "KEYBOARD_PRESS":
-        if pd[1] in special_keys:
-            keyboard.press(special_keys[pd[1]])
-            keyboard.release(special_keys[pd[1]])
-        else:
-            keyboard.press(pd[1])
-            keyboard.release(pd[1])
-    elif pd[0] == "EXEC":
-        subprocess.Popen(shlex.split(pd[1]), start_new_session=True)
-
+    try:
+        print("Extension result:", getattr(extensions[profile[data]['extension']], profile[data]["function"])(profile[data]["args"]))
+    except Exception as e:
+        print("Failed to call extension function\nError message:", e)
 async def main(address, char_uuid):
     while True:
         print("Connecting...")

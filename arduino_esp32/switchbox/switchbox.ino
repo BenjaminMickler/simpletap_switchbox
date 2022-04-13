@@ -35,7 +35,6 @@ The SimpleTap Project. If not, see <https://www.gnu.org/licenses/>.
 #include <BLEServer.h>
 #include <BLE2902.h>
 using namespace std;
-#define BUILTINLED 2
 #define FORMAT_SPIFFS_IF_FAILED true
 #define FORMAT_FFAT_IF_FAILED true
 #define USE_SPIFFS
@@ -67,9 +66,6 @@ static int writeLen = 0, writeLen2 = 0;
 static bool current = true;
 static int parts = 0, next = 0, cur = 0, MTU = 0;
 static int MODE = NORMAL_MODE;
-uint8_t txValue0 = 0;
-uint8_t txValue1 = 1;
-uint8_t txValue2 = 2;
 
 static void rebootEspWithReason(String reason) {
     Serial.println(reason);
@@ -250,7 +246,6 @@ void setup() {
     pinMode(18, INPUT_PULLUP);
     pinMode(2, INPUT_PULLUP);
     pinMode(4, INPUT_PULLUP);
-    pinMode(BUILTINLED, OUTPUT);
 #ifdef USE_SPIFFS
     if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
         Serial.println("SPIFFS Mount Failed");

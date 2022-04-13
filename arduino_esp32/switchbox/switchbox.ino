@@ -5,6 +5,10 @@ Written by Benjamin Mickler
 https://github.com/BenjaminMickler/simpletap_switchbox
 Email: ben@benmickler.com
 
+All portions of Felix Biego's ESP32_BLE_OTA_Arduino software in this software
+have been released under the MIT license (see LICENSE.MIT) and copyright
+for these portions of the software is owned by Felix Biego.
+
 Designed to run on an ESP32
 <https://www.espressif.com/en/products/socs/esp32>
 <https://en.wikipedia.org/wiki/ESP32>
@@ -59,13 +63,14 @@ static BLECharacteristic* pCharacteristicTX;
 static BLECharacteristic* spCharacteristicTX;
 static BLECharacteristic* pCharacteristicRX;
 static BLECharacteristic *cfgpCharacteristic;
-static bool deviceConnected = false, sendMode = false;
+static bool deviceConnected = false, sendMode = false, sendSize = true;
 bool oldDeviceConnected = false;
 static bool writeFile = false, request = false;
 static int writeLen = 0, writeLen2 = 0;
 static bool current = true;
 static int parts = 0, next = 0, cur = 0, MTU = 0;
 static int MODE = NORMAL_MODE;
+unsigned long rParts, tParts;
 
 static void rebootEspWithReason(String reason) {
     Serial.println(reason);
@@ -151,10 +156,16 @@ class bcallbacks: public BLECharacteristicCallbacks {
                     if (FLASH.exists("/update.bin")) {
                         FLASH.remove("/update.bin");
                     }
+                } else if (pData[0] == 0xFE) {
+                    rParts = 0;
+                    tParts = (pData[1] * 256 * 256 * 256) + (pData[2] * 256 * 256) + (pData[3] * 256) + pData[4];
                 } else if  (pData[0] == 0xFF) {
                     parts = (pData[1] * 256) + pData[2];
                     MTU = (pData[3] * 256) + pData[4];
                     MODE = UPDATE_MODE;
+                } else if (pData[0] == 0xEF) {
+                    FLASH.format();
+                    sendSize = true;
                 }
             }
         }
@@ -167,6 +178,8 @@ static void writeBinary(fs::FS &fs, const char * path, uint8_t *dat, int len) {
     }
     file.write(dat, len);
     file.close();
+    writeFile = false;
+    rParts += len;
 }
 void sendOtaResult(String result) {
     pCharacteristicTX->setValue(result.c_str());
@@ -331,6 +344,15 @@ void loop() {
                     delay(50);
                     sendMode = false;
                 }
+                if (sendSize) {
+                  unsigned long x = FLASH.totalBytes();
+                  unsigned long y = FLASH.usedBytes();
+                  uint8_t fSize[] = {0xEF, (uint8_t) (x >> 16), (uint8_t) (x >> 8), (uint8_t) x, (uint8_t) (y >> 16), (uint8_t) (y >> 8), (uint8_t) y};
+                  pCharacteristicTX->setValue(fSize, 7);
+                  pCharacteristicTX->notify();
+                  delay(50);
+                  sendSize = false;
+                }
                 delay(10);
             } else {
 
@@ -365,11 +387,23 @@ void loop() {
                 } else {
                     writeBinary(FLASH, "/update.bin", updater2, writeLen2);
                 }
-                writeFile = false;
             }
             break;
         case OTA_MODE:
-            updateFromFS(FLASH);
+            if (writeFile) {
+                if (!current) {
+                  writeBinary(FLASH, "/update.bin", updater, writeLen);
+                } else {
+                  writeBinary(FLASH, "/update.bin", updater2, writeLen2);
+                }
+              }
+              if (rParts == tParts) {
+                delay(5000);
+                updateFromFS(FLASH);
+              } else {
+                writeFile = true;
+                delay(2000);
+              }
             break;
     }
 }

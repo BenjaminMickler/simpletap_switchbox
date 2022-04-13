@@ -87,6 +87,6 @@ The SimpleTap SwitchBox supports firmware updates over Bluetooth Low Energy.
 
 The client's BLE OTA functionality is built on the [BLE_OTA_Python](https://github.com/fbiego/BLE_OTA_Python) project by Felix Biego and the switchbox firmware's BLE OTA functionality is built on the [ESP32_BLE_OTA_Arduino](https://github.com/fbiego/ESP32_BLE_OTA_Arduino) project by Felix Biego.
 
-All portions of Felix Biego's BLE_OTA_Python software in the switchbox client and Felix Biego's ESP32_BLE_OTA_Arduino software in the switchbox firmware have been released under the MIT license (see [LICENSE.MIT](https://github.com/BenjaminMickler/simpletap_switchbox/blob/main/LICENSE.MIT)) and copyright for this software is owned by Felix Biego.
+All portions of Felix Biego's BLE_OTA_Python software in the switchbox client and Felix Biego's ESP32_BLE_OTA_Arduino software in the switchbox firmware have been released under the MIT license (see [LICENSE.MIT](https://github.com/BenjaminMickler/simpletap_switchbox/blob/main/LICENSE.MIT)) and copyright for these portions of the software is owned by Felix Biego.
 
 The rest of the software has been released under the GNU GPLv3 (or later) license (see [LICENSE](https://github.com/BenjaminMickler/simpletap_switchbox/blob/main/LICENSE)) and copyright is owned by Benjamin Mickler.

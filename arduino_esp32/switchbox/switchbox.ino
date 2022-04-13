@@ -303,19 +303,23 @@ void loop() {
                     spCharacteristicTX->setValue("0");
                     spCharacteristicTX->notify();
                     delay(500);
-                } else if (switch1val == LOW) {
+                }
+                if (switch1val == LOW) {
                     spCharacteristicTX->setValue("1");
                     spCharacteristicTX->notify();
                     delay(500);
-                } else if (switch2val == LOW) {
+                }
+                if (switch2val == LOW) {
                     spCharacteristicTX->setValue("2");
                     spCharacteristicTX->notify();
                     delay(500);
-                } else if (switch3val == LOW) {
+                }
+                if (switch3val == LOW) {
                     spCharacteristicTX->setValue("3");
                     spCharacteristicTX->notify();
                     delay(500);
-                } else if (switch4val == LOW) {
+                }
+                if (switch4val == LOW) {
                     spCharacteristicTX->setValue("4");
                     spCharacteristicTX->notify();
                     delay(500);

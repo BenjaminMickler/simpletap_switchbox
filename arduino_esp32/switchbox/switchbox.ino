@@ -244,7 +244,7 @@ void setup() {
     pinMode(5, INPUT_PULLUP);
     pinMode(0, INPUT_PULLUP);
     pinMode(18, INPUT_PULLUP);
-    pinMode(2, INPUT_PULLUP);
+    pinMode(19, INPUT_PULLUP);
     pinMode(4, INPUT_PULLUP);
 #ifdef USE_SPIFFS
     if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
@@ -297,7 +297,7 @@ void loop() {
                 int switch0val = digitalRead(5);
                 int switch1val = digitalRead(0);
                 int switch2val = digitalRead(18);
-                int switch3val = digitalRead(2);
+                int switch3val = digitalRead(19);
                 int switch4val = digitalRead(4);
                 if (switch0val == LOW) {
                     spCharacteristicTX->setValue("0");

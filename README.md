@@ -70,6 +70,10 @@ The name of the switchbox can be changed. The switchbox's name must be unique to
 ### Updating firmware
 The client can update the switchbox's firmware over BLE. To update a switchbox's firmware, place the firmware file in the same directory as the client. The only requirement is that the firmware file's extension is `.bin`. When the client is started, it checks for any files with the `.bin` extension. If there are multiple, the firmware file used is arbitrary. If found, the client will upload it to the chosen switchbox and the switchbox will install it. If the update is sucessful, the client will delete the firmware file.
 
+## Hardware
+The first prototype:
+![The first SimpleTap switchbox prototype](/hardware/images/first-prototype.jpg "The first prototype")
+
 ## SwitchBox firmware
 ### UUIDs
 Service: `fb1e4001-54ae-4a28-9f74-dfccb248601d`

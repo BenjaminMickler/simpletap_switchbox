@@ -248,6 +248,8 @@ void setup() {
     pinMode(5, INPUT_PULLUP);
     pinMode(0, INPUT_PULLUP);
     pinMode(18, INPUT_PULLUP);
+    pinMode(2, INPUT_PULLUP);
+    pinMode(4, INPUT_PULLUP);
     pinMode(BUILTINLED, OUTPUT);
 #ifdef USE_SPIFFS
     if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
@@ -300,18 +302,26 @@ void loop() {
                 int switch0val = digitalRead(5);
                 int switch1val = digitalRead(0);
                 int switch2val = digitalRead(18);
+                int switch3val = digitalRead(2);
+                int switch4val = digitalRead(4);
                 if (switch0val == LOW) {
                     spCharacteristicTX->setValue("0");
                     spCharacteristicTX->notify();
                     delay(500);
-                }
-                if (switch1val == LOW) {
+                } else if (switch1val == LOW) {
                     spCharacteristicTX->setValue("1");
                     spCharacteristicTX->notify();
                     delay(500);
-                }
-                if (switch2val == LOW) {
+                } else if (switch2val == LOW) {
                     spCharacteristicTX->setValue("2");
+                    spCharacteristicTX->notify();
+                    delay(500);
+                } else if (switch3val == LOW) {
+                    spCharacteristicTX->setValue("3");
+                    spCharacteristicTX->notify();
+                    delay(500);
+                } else if (switch4val == LOW) {
+                    spCharacteristicTX->setValue("4");
                     spCharacteristicTX->notify();
                     delay(500);
                 }

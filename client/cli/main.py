@@ -2,7 +2,7 @@ __author__ = "Benjamin Mickler"
 __copyright__ = ["Copyright 2018-2022, Benjamin Mickler", "Copyright (c) 2021 Felix Biego"]
 __credits__ = ["Benjamin Mickler", "Felix Biego"]
 __license__ = ["GPLv3 or later", "MIT"]
-__version__ = "0.1.0"
+__version__ = "14042022"
 __maintainer__ = "Benjamin Mickler"
 __email__ = "ben@benmickler.com"
 __status__ = "Prototype"
@@ -42,11 +42,27 @@ async def set_name(address, name, ci, config):
             await client.write_gatt_char(CFG_CHAR_UUID, name.encode())
         os.remove("name")
         config["switchboxes"][ci] = name
-        with open("config.txt", "w") as f:
+        with open("config.json", "w") as f:
             json.dump(config, f)
         return "Success"
     except Exception as e:
-        return e
+        return repr(e)
+async def set_sleep_delay(address, delay):
+    try:
+        async with BleakClient(address) as client:
+            await client.write_gatt_char(CFG_CHAR_UUID, (">"+str(delay)).encode())
+        os.remove("sleep_delay")
+        return "Success"
+    except Exception as e:
+        return repr(e)
+async def set_switch_delay(address, delay):
+    try:
+        async with BleakClient(address) as client:
+            await client.write_gatt_char(CFG_CHAR_UUID, ("<"+str(delay)).encode())
+        os.remove("switch_delay")
+        return "Success"
+    except Exception as e:
+        return repr(e)
 # Felix Biego's BLE_OTA_Python | Copyright (c) 2021 Felix Biego (MIT license)
 UART_SERVICE_UUID = "fb1e4001-54ae-4a28-9f74-dfccb248601d"
 UART_RX_CHAR_UUID = "fb1e4002-54ae-4a28-9f74-dfccb248601d"
@@ -68,7 +84,7 @@ async def start_ota(ble_address: str, file_name: str):
     def handle_disconnect(_: BleakClient):
         global disconnect
         disconnect = False
-        print(": Device disconnected")
+        print("Device disconnected")
         disconnected_event.set()
             
     async def handle_rx(_: int, data: bytearray):
@@ -99,8 +115,6 @@ async def start_ota(ble_address: str, file_name: str):
             if "Success" in str(result, 'utf-8'):
                 print(f'Removing "{file_name}"')
                 os.remove(file_name)
-        #print("received:", data)
-
     def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
         """
         Call in a loop to create terminal progress bar
@@ -153,9 +167,7 @@ async def start_ota(ble_address: str, file_name: str):
     async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
         await client.start_notify(UART_TX_CHAR_UUID, handle_rx)
         await asyncio.sleep(1.0)
-        
         await send_data(client, bytearray([0xFD]), False)
-        
         global fileBytes
         fileBytes = get_bytes_from_file(file_name)
         global clt
@@ -168,14 +180,13 @@ async def start_ota(ble_address: str, file_name: str):
         total = fileParts
         otaInfo = bytearray([0xFF, int(fileParts/256), int(fileParts%256), int(MTU / 256), int(MTU%256) ])
         await send_data(client, otaInfo, False)
-        
         while end:
             await asyncio.sleep(1.0)
         print("Waiting for disconnect... ", end="")
         await disconnected_event.wait()
         print("-----------Complete--------------")
 # End BLE_OTA_Python
-with open("config.txt") as f:
+with open("config.json") as f:
     try:
         config = json.load(f)
     except Exception as e:
@@ -201,16 +212,25 @@ async def get_mac(wanted_name):
 def notification_handler(sender, data):
     data = data.decode()
     print("Switch "+data+" pressed")
-    try:
-        print("Extension result:", getattr(extensions[profile[data]['extension']], profile[data]["function"])(profile[data]["args"]))
-    except Exception as e:
-        print("Failed to call extension function\nError message:", e)
+    if profile[data]['extension'] != "":
+        try:
+            print("Extension result:", getattr(extensions[profile[data]['extension']], profile[data]["function"])(profile[data]["args"]))
+        except Exception as e:
+            print("Failed to call extension function\nError message:", repr(e))
 async def main(address, char_uuid):
     while True:
         print("Connecting...")
         try:
             async with BleakClient(address) as client:
                 print(f"Connected: {client.is_connected}")
+                configuration = await client.read_gatt_char(CFG_CHAR_UUID)
+                configuration = configuration.decode().split(",")
+                print("\nSwitchbox configuration:")
+                print("\tName:", configuration[0])
+                print("\tSleep delay:", configuration[1], end="")
+                print(" mins")
+                print("\tSwitch delay:", configuration[2], end="")
+                print(" ms")
                 await client.start_notify(char_uuid, notification_handler)
                 while True:
                     await asyncio.sleep(2)
@@ -248,8 +268,18 @@ if __name__ == "__main__":
             name = f.read().replace('\n','')
         print(f'"name" file found, updating switchbox name to "{name}"')
         print("Result:", asyncio.run(set_name(ADDRESS, name, ci, config)))
-    print("Select a profile: ")
+    if os.path.isfile("sleep_delay"):
+        with open("sleep_delay") as f:
+            sd = f.read().replace('\n','')
+        print(f'"sleep_delay" file found, updating switchbox sleep delay to "{sd}"')
+        print("Result:", asyncio.run(set_sleep_delay(ADDRESS, int(sd))))
+    if os.path.isfile("switch_delay"):
+        with open("switch_delay") as f:
+            swd = f.read().replace('\n','')
+        print(f'"switch_delay" file found, updating switchbox switch delay to "{swd}"')
+        print("Result:", asyncio.run(set_switch_delay(ADDRESS, int(swd))))
+    print("\nSelect a profile: ")
     for i in config["profiles"]:
         print(i)
     profile = config["profiles"][input("> ")]
-    asyncio.run(main(ADDRESS,config["CHARACTERISTIC_UUID"],))
+    asyncio.run(main(ADDRESS,config["switch_notify_UUID"],))

@@ -386,13 +386,12 @@ void loop() {
                 delay(10);
             } else {
                 if (ftime == true) {
-                  Serial.println("No device connected, sleeping in 10 mins");
+                  Serial.println("No device connected");
                   sl_num = sleep_time[0].toInt();
                   rtc.setTime(1609459200);
                   stime = rtc.getMinute();
                   ftime = false;
                 }
-                Serial.println(rtc.getMinute());
                 if (rtc.getMinute() == stime + sl_num) {
                     Serial.println("Going to sleep");
                     esp_deep_sleep_start();

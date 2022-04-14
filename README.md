@@ -80,7 +80,7 @@ The client can update the switchbox's firmware over BLE. To update a switchbox's
 The first prototype:
 ![The first SimpleTap switchbox prototype](/hardware/images/first-prototype.jpg "The first prototype")
 
-## SwitchBox firmware
+## Developing
 ### UUIDs
 Service: `fb1e4001-54ae-4a28-9f74-dfccb248601d`
 
@@ -91,6 +91,8 @@ Configuration: `881f328a-9254-468f-ae0a-075cfc54e137`
 Update RX: `fb1e4002-54ae-4a28-9f74-dfccb248601d`
 
 Update TX: `fb1e4003-54ae-4a28-9f74-dfccb248601d`
+
+Writing text that does not begin with `>` or `<` to the configuration UUID sets the name to the data written. Writing text that has `>` as its first character will set the sleep delay to the data written (note that `>` will be removed, the rest of the data must be an integer). Writing text that has `<` as its first character will set the switch delay to the data written (note that `<` will be removed, the rest of the data must be an integer).
 
 ## BLE OTA
 The SimpleTap SwitchBox supports firmware updates over Bluetooth Low Energy.

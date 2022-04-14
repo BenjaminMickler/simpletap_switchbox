@@ -1,5 +1,5 @@
 /*
-version 0.1.0
+Date: 14/04/2022
 Copyright 2018-2022, Benjamin Mickler
 Written by Benjamin Mickler
 https://github.com/BenjaminMickler/simpletap_switchbox
@@ -38,6 +38,7 @@ The SimpleTap Project. If not, see <https://www.gnu.org/licenses/>.
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+#include <ESP32Time.h>
 using namespace std;
 #define FORMAT_SPIFFS_IF_FAILED true
 #define FORMAT_FFAT_IF_FAILED true
@@ -71,6 +72,19 @@ static bool current = true;
 static int parts = 0, next = 0, cur = 0, MTU = 0;
 static int MODE = NORMAL_MODE;
 unsigned long rParts, tParts;
+ESP32Time rtc;
+bool ftime = true;
+int stime;
+#define Threshold 40
+touch_pad_t touchPin;
+int sl_num;
+vector<String> sleep_time;
+int delay_time;
+vector<String> dt;
+
+void callback(){
+  //placeholder callback function
+}
 
 static void rebootEspWithReason(String reason) {
     Serial.println(reason);
@@ -113,7 +127,15 @@ bool writeFileFunc(fs::FS &fs, const char * path, const char * message){
 class cfgcallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *cfgpCharacteristic) {
       string value = cfgpCharacteristic->getValue();
-      writeFileFunc(SPIFFS, "/config.txt", value.c_str());
+      if(value.at(0) == '>') {
+          value.erase(value.begin()+0);
+          writeFileFunc(SPIFFS, "/sleep_time.txt", value.c_str());
+      } else if(value.at(0) == '<') {
+          value.erase(value.begin()+0);
+          writeFileFunc(SPIFFS, "/delay_time.txt", value.c_str());
+      } else {
+          writeFileFunc(SPIFFS, "/config.txt", value.c_str());
+    }
       ESP.restart();
     }
 };
@@ -193,8 +215,7 @@ void performUpdate(Stream &updateSource, size_t updateSize) {
         size_t written = Update.writeStream(updateSource);
         if (written == updateSize) {
             Serial.println("Written: " + String(written) + " successfully");
-        }
-        else {
+        } else {
             Serial.println("Written only: " + String(written) + "/" + String(updateSize) + ". Retry?");
         }
         result += "Written: " + String(written) + "/" + String(updateSize) + " [" + String((written / updateSize) * 100) + "%] \n";
@@ -204,20 +225,15 @@ void performUpdate(Stream &updateSource, size_t updateSize) {
             if (Update.isFinished()) {
                 Serial.println("Update successfully completed. Rebooting...");
                 result += "Success!\n";
-            }
-            else {
+            } else {
                 Serial.println("Update not finished? Something went wrong!");
                 result += "Failed!\n";
             }
-
-        }
-        else {
+        } else {
             Serial.println("Error Occurred. Error #: " + String(Update.getError()));
             result += "Error #: " + String(Update.getError());
         }
-    }
-    else
-    {
+    } else {
         Serial.println("Not enough space to begin OTA");
         result += "Not enough space for OTA";
     }
@@ -259,6 +275,9 @@ void setup() {
     pinMode(18, INPUT_PULLUP);
     pinMode(19, INPUT_PULLUP);
     pinMode(4, INPUT_PULLUP);
+    touchAttachInterrupt(T3, callback, Threshold);
+    esp_sleep_enable_touchpad_wakeup();
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_4,1);
 #ifdef USE_SPIFFS
     if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
         Serial.println("SPIFFS Mount Failed");
@@ -277,7 +296,16 @@ void setup() {
       //  w = writeFileFunc(SPIFFS, "/config.txt", "SimpleTap SwitchBox\n500");
       //}
     }
+    if (SPIFFS.exists("/sleep_time.txt") == 0) {
+      writeFileFunc(SPIFFS, "/sleep_time.txt", "10");
+    }
+    if (SPIFFS.exists("/delay_time.txt") == 0) {
+      writeFileFunc(SPIFFS, "/delay_time.txt", "500");
+    }
     vector<String> cfg = readFile(SPIFFS, "/config.txt");
+    sleep_time = readFile(SPIFFS, "/sleep_time.txt");
+    dt = readFile(SPIFFS, "/delay_time.txt");
+    delay_time = dt[0].toInt();
     BLEDevice::init(cfg[0].c_str());
     BLEServer *pServer = BLEDevice::createServer();
     pServer->setCallbacks(new bservercallbacks());
@@ -294,7 +322,8 @@ void setup() {
     spCharacteristicTX->setNotifyProperty(true);
     cfgpCharacteristic = pService->createCharacteristic(cfgCHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
     cfgpCharacteristic->setCallbacks(new cfgcallbacks());
-    cfgpCharacteristic->setValue(cfg[0].c_str());
+    String cfgval = cfg[0]+","+sleep_time[0]+","+dt[0];
+    cfgpCharacteristic->setValue(cfgval.c_str());
     pService->start();
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
@@ -307,35 +336,36 @@ void loop() {
     switch (MODE) {
         case NORMAL_MODE:
             if (deviceConnected) {
-                int switch0val = digitalRead(5);
+                ftime = true;
+                int switch0val = digitalRead(4);
                 int switch1val = digitalRead(0);
                 int switch2val = digitalRead(18);
                 int switch3val = digitalRead(19);
-                int switch4val = digitalRead(4);
+                int switch4val = digitalRead(5);
                 if (switch0val == LOW) {
                     spCharacteristicTX->setValue("0");
                     spCharacteristicTX->notify();
-                    delay(500);
+                    delay(delay_time);
                 }
                 if (switch1val == LOW) {
                     spCharacteristicTX->setValue("1");
                     spCharacteristicTX->notify();
-                    delay(500);
+                    delay(delay_time);
                 }
                 if (switch2val == LOW) {
                     spCharacteristicTX->setValue("2");
                     spCharacteristicTX->notify();
-                    delay(500);
+                    delay(delay_time);
                 }
                 if (switch3val == LOW) {
                     spCharacteristicTX->setValue("3");
                     spCharacteristicTX->notify();
-                    delay(500);
+                    delay(delay_time);
                 }
                 if (switch4val == LOW) {
                     spCharacteristicTX->setValue("4");
                     spCharacteristicTX->notify();
-                    delay(500);
+                    delay(delay_time);
                 }
                 if (sendMode) {
                     uint8_t fMode[] = {0xAA, FASTMODE};
@@ -355,7 +385,19 @@ void loop() {
                 }
                 delay(10);
             } else {
-
+                if (ftime == true) {
+                  Serial.println("No device connected, sleeping in 10 mins");
+                  sl_num = sleep_time[0].toInt();
+                  rtc.setTime(1609459200);
+                  stime = rtc.getMinute();
+                  ftime = false;
+                }
+                Serial.println(rtc.getMinute());
+                if (rtc.getMinute() == stime + sl_num) {
+                    Serial.println("Going to sleep");
+                    esp_deep_sleep_start();
+                }
+                delay(750);
             }
             if (!deviceConnected && oldDeviceConnected) {
                 delay(500);
